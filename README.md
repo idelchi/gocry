@@ -1,34 +1,16 @@
 # gocry
 
-gocry is a command-line utility for encrypting and decrypting files using a specified key.
+[![Go Reference](https://pkg.go.dev/badge/github.com/idelchi/gocry.svg)](https://pkg.go.dev/github.com/idelchi/gocry)
+[![Go Report Card](https://goreportcard.com/badge/github.com/idelchi/gocry)](https://goreportcard.com/report/github.com/idelchi/gocry)
+[![Build Status](https://github.com/idelchi/gocry/actions/workflows/github-actions.yml/badge.svg)](https://github.com/idelchi/gocry/actions/workflows/github-actions.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-It supports file encryption and line-by-line encryption based on directives within the file.
+`gocry` is a command-line utility for encrypting and decrypting files using a specified key.
 
-The program outputs the processed content to standard output (stdout).
+It supports both file encryption and line-by-line encryption based on directives within the file.
 
-Can be used as filters in git.
-
-`.gitconfig`
-
-```toml
-[filter "encrypt:line"]
-    clean = "gocry -m lines -o encrypt -k ~/.secrets/key %f"
-    smudge = "gocry -m lines -o decrypt -k ~/.secrets/key %f %f"
-    required = true
-
-[filter "encrypt:file"]
-    clean = "gocry -m file -o encrypt -k ~/.secrets/key %f"
-    smudge = "gocry -m file -o decrypt -k ~/.secrets/key %f %f"
-    required = true
-```
-
-`.gitattributes`
-
-```toml
-*                       filter=encrypt:line
-
-**/secrets/*            filter=encrypt:file
-```
+The tool can read the file from stdin and write the encrypted/decrypted content to stdout,
+making it suitable for use as a filter in git.
 
 ## Installation
 
@@ -38,142 +20,120 @@ Can be used as filters in git.
 go install github.com/idelchi/gocry@latest
 ```
 
+### From installation script
+
+```sh
+curl -sSL https://raw.githubusercontent.com/idelchi/gocry/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
+```
+
 ## Usage
 
 ```sh
-gocry [flags] [file]
+gocry [flags] command [flags]
 ```
 
-The available flags include:
+### Global Flags and Environment Variables
 
-- `-m, --mode`: Mode of operation: "file" or "line" (default "file")
-- `-o, --operation`: Operation to perform: "encrypt" or "decrypt" (default "encrypt")
-- `-k, --key`: Path to the key file (required)
-- `-t, --type`: Encryption type: "deterministic" or "nondeterministic" (default "nondeterministic")
-- `--gpg`: Whether a GPG key is used for encryption/decryption (default true)
-- `--directives.encrypt`: Directives for encryption (default "### DIRECTIVE: ENCRYPT")
-- `--directives.decrypt`: Directives for decryption (default "### DIRECTIVE: DECRYPT")
-- `--version`: Show the version information and exit
-- `-h, --help`: Show the help information and exit
-- `-s, --show`: Show the configuration and exit
+| Flag             | Environment Variable      | Description                         | Default                  |
+| ---------------- | ------------------------- | ----------------------------------- | ------------------------ |
+| `-s, --show`     | `GOCRY_SHOW`              | Show the configuration and exit     | `false`                  |
+| `-m, --mode`     | `GOCRY_MODE`              | Mode of operation: "file" or "line" | `file`                   |
+| `-k, --key`      | `GOCRY_KEY`               | Key for encryption/decryption       | -                        |
+| `-f, --key-file` | `GOCRY_KEY_FILE`          | Path to the key file                | -                        |
+| `--encrypt`      | `GOCRY_ENCRYPT_DIRECTIVE` | Directive for encryption            | `### DIRECTIVE: ENCRYPT` |
+| `--decrypt`      | `GOCRY_DECRYPT_DIRECTIVE` | Directive for decryption            | `### DIRECTIVE: DECRYPT` |
+| `-h, --help`     | -                         | Help for gocry                      | -                        |
+| `-v, --version`  | -                         | Version for gocry                   | -                        |
 
-### Examples
+### Commands
 
-#### Encrypt a File
+#### `encrypt` - Encrypt content
 
-Encrypt `input.txt` output the result to `encrypted.txt`:
+Encrypt a file or specific lines within a file.
+
+Examples:
 
 ```sh
-gocry -k path/to/keyfile input.txt > encrypted.txt
+# Encrypt an entire file
+gocry -f path/to/keyfile encrypt input.txt > encrypted.txt.enc
+
+# Encrypt specific lines in a file
+gocry -f path/to/keyfile -m line encrypt input.txt > encrypted.txt
 ```
 
-#### Decrypt a File
+#### `decrypt` - Decrypt content
 
-Decrypt `encrypted.txt` using the same key and output the result to `decrypted.txt`:
+Decrypt a file or specific lines within a file.
+
+Examples:
 
 ```sh
-gocry -o decrypt -k path/to/keyfile encrypted.txt > decrypted.txt
+# Decrypt an entire file
+gocry -f path/to/keyfile decrypt encrypted.txt.enc > decrypted.txt.dec
+
+# Decrypt specific lines in a file
+gocry -f path/to/keyfile -m line decrypt encrypted.txt > decrypted.txt
 ```
 
-#### Encrypt Specific Lines in a File
+### Git Integration
 
-Encrypt lines in `input.txt` that contain the directive `### DIRECTIVE: ENCRYPT` and output the result to `encrypted.txt`:
+gocry can be used as a filter in git for automatic encryption/decryption of files.
 
-```sh
-gocry -m line -k path/to/keyfile input.txt > encrypted.txt
+When stdin is given, gocry reads the file from stdin (using the file arguments for logging),
+and writes the encrypted/decrypted content to stdout.
+
+**.gitconfig:**
+
+```gitconfig
+[filter "encrypt:line"]
+    clean = "gocry -f ~/.secrets/key -m line encrypt %f"
+    smudge = "gocry -f ~/.secrets/key  -m line decrypt %f"
+    required = true
+
+[filter "encrypt:file"]
+    clean = "gocry -f ~/.secrets/key -m file encrypt  %f"
+    smudge = "gocry -f ~/.secrets/key -m file decrypt %f"
+    required = true
 ```
 
-#### Show the Configuration
+**.gitattributes:**
 
-Display the current configuration based on the provided flags:
-
-```sh
-gocry -s -k path/to/keyfile input.txt
+```gitattributes
+*                       filter=encrypt:line
+**/secrets/*            filter=encrypt:file
 ```
 
-#### Display Help Information
+### Line-by-Line Encryption
 
-Show detailed help information:
+When using `--mode line`, gocry processes only lines containing specific directives:
 
-```sh
-gocry --help
-```
+**Input Example:**
 
-## Directives for Line-by-Line Encryption
-
-When using `--mode line`, `gocry` processes only the lines that contain specific directives:
-
-- To encrypt a line, append `### DIRECTIVE: ENCRYPT` to the line.
-- To decrypt a line, it should start with `### DIRECTIVE: DECRYPT:` followed by the encrypted content.
-
-The directives themselves can be customized using the `--directives.encrypt` and `--directives.decrypt` flags.
-
-### Example Input File (input.txt):
-
-```
+```text
 This is a normal line.
 This line will be encrypted. ### DIRECTIVE: ENCRYPT
 Another normal line.
 ```
 
-### Encrypting the File:
+**After Encryption:**
 
-```sh
-gocry -m line -k path/to/keyfile input.txt > encrypted.txt
-```
-
-### Resulting Output (encrypted.txt):
-
-```
+```text
 This is a normal line.
 ### DIRECTIVE: DECRYPT: VGhpcyBsaW5lIHdpbGwgYmUgZW5jcnlwdGVkLiBPRmx2eGZpRk9GMkF3PT0=
 Another normal line.
 ```
 
-### Decrypting the File:
+**After Decryption:**
 
-```sh
-gocry -m line -o decrypt -k path/to/keyfile encrypted.txt > decrypted.txt
-```
-
-### Resulting Output (decrypted.txt):
-
-```
+```text
 This is a normal line.
 This line will be encrypted. ### DIRECTIVE: ENCRYPT
 Another normal line.
 ```
 
-## Notes on Encryption Types
-
-### Deterministic Encryption (`--type deterministic`):
-
-- Uses a fixed initialization vector (IV) derived from the key.
-- Encrypting the same content multiple times produces the same ciphertext.
-- Useful when you need consistent encryption results for the same input.
-
-### Nondeterministic Encryption (`--type nondeterministic`):
-
-- Uses a randomly generated IV.
-- Encrypting the same content multiple times produces different ciphertexts.
-- Provides better security by ensuring that identical plaintexts encrypt to different ciphertexts.
-
-## For More Details
-
-To display a comprehensive list of flags and their descriptions, run:
+For detailed help on any command:
 
 ```sh
 gocry --help
-```
-
-## Under the Hood
-
-gocry uses AES encryption in CFB (Cipher Feedback) mode. The key provided should be of appropriate length for AES (16, 24, or 32 bytes for AES-128, AES-192, or AES-256 respectively).
-
-## Generating a Key
-
-You can generate a key using OpenSSL or any other cryptographic library. Here's an example using OpenSSL to generate a 256-bit (32-byte) key:
-
-```sh
-openssl rand -out keyfile -base64 32
+gocry <command> --help
 ```
