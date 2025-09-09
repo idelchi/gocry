@@ -1,8 +1,6 @@
 module github.com/idelchi/gocry
 
-go 1.23.0
-
-toolchain go1.23.2
+go 1.25
 
 require (
 	github.com/idelchi/go-next-tag v0.0.0-20241009171622-1f3cb2ac9867
