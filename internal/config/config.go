@@ -14,7 +14,7 @@ var ErrUsage = errors.New("usage error")
 // Key represents an encryption key configuration.
 type Key struct {
 	// String is a hexadecimal key string
-	String string `label:"--key" mapstructure:"key" mask:"fixed" validate:"omitempty,exclusive=File,hexadecimal,len=64"`
+	String string `label:"--key" mapstructure:"key" mask:"fixed" validate:"omitempty,exclusive=File,hexadecimal"`
 
 	// File is a path to a file containing a hexadecimal key string
 	File string `label:"--key-file" mapstructure:"key-file" validate:"exclusive=String"`
@@ -45,6 +45,12 @@ type Config struct {
 
 	// Directives contains the markers used to identify content for processing
 	Directives encrypt.Directives `mapstructure:",squash"`
+
+	// Deterministic enables deterministic encryption (AES-SIV)
+	Deterministic bool `mapstructure:"deterministic"`
+
+	// Quiet suppresses non-error messages
+	Quiet bool `mapstructure:"quiet"`
 }
 
 // Display returns the value of the Show field.

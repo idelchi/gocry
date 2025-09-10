@@ -16,7 +16,7 @@ var ErrProcessing = errors.New("processing error")
 // It maintains the original line order in the output while leveraging parallel processing.
 // Returns a boolean indicating if any encryption/decryption was performed and any error encountered.
 //
-//nolint:funlen,gocognit,cyclop
+//nolint:funlen,gocognit
 func (e *Encryptor) processLines(reader io.Reader, writer io.Writer, parallel int) (bool, error) {
 	// Read all lines first to maintain output order
 	var lines []string
@@ -137,12 +137,39 @@ func (e *Encryptor) processLines(reader io.Reader, writer io.Writer, parallel in
 // It's used when line-by-line processing is not required.
 // Returns true if processing was performed and any error encountered.
 func (e *Encryptor) processWholeFile(reader io.Reader, writer io.Writer) (bool, error) {
+	if e.Deterministic {
+		switch e.Operation {
+		case Encrypt:
+			buf, _ := io.ReadAll(reader)
+
+			out, err := e.encryptDeterministic(buf)
+			if err != nil {
+				return false, err
+			}
+
+			_, err = writer.Write(out)
+
+			return true, err //nolint:wrapcheck	// error does not need wrapping
+		case Decrypt:
+			buf, _ := io.ReadAll(reader)
+
+			out, err := e.decryptDeterministic(buf)
+			if err != nil {
+				return false, err
+			}
+
+			_, err = writer.Write(out)
+
+			return true, err //nolint:wrapcheck	// error does not need wrapping
+		}
+	}
+
 	switch e.Operation {
 	case Encrypt:
 		return true, e.encryptStream(reader, writer)
 	case Decrypt:
 		return true, e.decryptStream(reader, writer)
-	default:
-		return false, fmt.Errorf("%w: invalid operation", ErrProcessing)
 	}
+
+	return false, fmt.Errorf("%w: invalid operation", ErrProcessing)
 }

@@ -7,6 +7,9 @@
 
 `gocry` is a command-line utility for encrypting and decrypting files using a specified key.
 
+Defaults to deterministic AES‑SIV encryption. Use a 128‑hex key (64 bytes).
+For non‑deterministic AES‑CTR set `--deterministic=false` and use a 64‑hex key (32 bytes).
+
 It supports both file encryption and line-by-line encryption based on directives within the file.
 
 The tool can read the file from stdin and write the encrypted/decrypted content to stdout,
@@ -34,17 +37,20 @@ gocry [flags] command [flags]
 
 ### Global Flags and Environment Variables
 
-| Flag             | Environment Variable      | Description                         | Default                  |
-| ---------------- | ------------------------- | ----------------------------------- | ------------------------ |
-| `-j, --parallel` | `GOCRY_PARALLEL`          | Number of parallel workers          | `runtime.NumCPU()`       |
-| `-k, --key`      | `GOCRY_KEY`               | Key for encryption/decryption       | -                        |
-| `-f, --key-file` | `GOCRY_KEY_FILE`          | Path to the key file                | -                        |
-| `-m, --mode`     | `GOCRY_MODE`              | Mode of operation: `file` or `line` | `file`                   |
-| `--encrypt`      | `GOCRY_ENCRYPT_DIRECTIVE` | Directive for encryption            | `### DIRECTIVE: ENCRYPT` |
-| `--decrypt`      | `GOCRY_DECRYPT_DIRECTIVE` | Directive for decryption            | `### DIRECTIVE: DECRYPT` |
-| `-s, --show`     | `GOCRY_SHOW`              | Show the configuration and exit     | `false`                  |
-| `-h, --help`     | -                         | Help for `gocry`                    | -                        |
-| `-v, --version`  | -                         | Version for `gocry`                 | -                        |
+| Flag              | Environment Variable      | Description                         | Default                  |
+| ----------------- | ------------------------- | ----------------------------------- | ------------------------ |
+| `-j, --parallel`  | `GOCRY_PARALLEL`          | Number of parallel workers          | `runtime.NumCPU()`       |
+| `-k, --key`       | `GOCRY_KEY`               | Key for encryption/decryption       | -                        |
+| `-f, --key-file`  | `GOCRY_KEY_FILE`          | Path to the key file                | -                        |
+| `-m, --mode`      | `GOCRY_MODE`              | Mode of operation: `file` or `line` | `file`                   |
+| `--encrypt`       | `GOCRY_ENCRYPT_DIRECTIVE` | Directive for encryption            | `### DIRECTIVE: ENCRYPT` |
+| `--decrypt`       | `GOCRY_DECRYPT_DIRECTIVE` | Directive for decryption            | `### DIRECTIVE: DECRYPT` |
+| `--deterministic` | `GOCRY_DETERMINISTIC`     | Enable deterministic AES‑SIV        | `true`                   |
+| `--quiet`         | `GOCRY_QUIET`             | Suppress non-error messages         | `false`                  |
+| `--experiments`   | `GOCRY_EXPERIMENTS`       | Enable experimental features        | `false`                  |
+| `-s, --show`      | `GOCRY_SHOW`              | Show the configuration and exit     | `false`                  |
+| `-h, --help`      | -                         | Help for `gocry`                    | -                        |
+| `-v, --version`   | -                         | Version for `gocry`                 | -                        |
 
 ### Commands
 

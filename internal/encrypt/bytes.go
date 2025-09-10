@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-// encryptBytes encrypts the given byte slice using AES-CFB mode.
+// encryptBytes encrypts the given byte slice using AES-CTR mode.
 // It prepends a random IV to the ciphertext and returns the complete encrypted block.
 // The returned format is: [16 bytes IV][variable-length ciphertext].
 func (e *Encryptor) encryptBytes(data []byte) ([]byte, error) {
@@ -26,14 +26,14 @@ func (e *Encryptor) encryptBytes(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("generating IV: %w", err)
 	}
 
-	// Encrypt data using CFB mode
-	stream := cipher.NewCFBEncrypter(block, initializationVector)
+	// Encrypt data using CTR mode
+	stream := cipher.NewCTR(block, initializationVector)
 	stream.XORKeyStream(ciphertext[aes.BlockSize:], data)
 
 	return ciphertext, nil
 }
 
-// decryptBytes decrypts the given ciphertext using AES-CFB mode.
+// decryptBytes decrypts the given ciphertext using AES-CTR mode.
 // It expects the input to be in the format: [16 bytes IV][variable-length ciphertext].
 // Returns the original plaintext on success.
 func (e *Encryptor) decryptBytes(ciphertext []byte) ([]byte, error) {
@@ -49,10 +49,11 @@ func (e *Encryptor) decryptBytes(ciphertext []byte) ([]byte, error) {
 
 	// Extract IV and actual ciphertext
 	iv := ciphertext[:aes.BlockSize]
+
 	ciphertext = ciphertext[aes.BlockSize:]
 
-	// Decrypt data using CFB mode
-	stream := cipher.NewCFBDecrypter(block, iv)
+	// Decrypt data using CTR mode
+	stream := cipher.NewCTR(block, iv)
 	stream.XORKeyStream(ciphertext, ciphertext) // Decryption happens in-place
 
 	return ciphertext, nil

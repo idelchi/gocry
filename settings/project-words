@@ -5,11 +5,22 @@
 
 # cspell --config=.devenv/settings/cspell.yaml --words-only --unique "**/*.go" "**/*.py" "**/*.sh" | sort --ignore-case >> settings/project-words.txt
 
+ciphertext
+cobraext
 cyclop
+daead
 encryptor
+funlen
 gocognit
 gocry
 gogen
 idelchi
+insecurecleartextkeyset
+ireturn
+mapstructure
 nolint
+sivpb
 stderrln
+tink
+tinkpb
+wrapcheck

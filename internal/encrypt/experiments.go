@@ -7,9 +7,13 @@ import (
 	"strings"
 )
 
+// jscpd:ignore-start
+
 // processLines processes each line of the input data sequentially.
 // It maintains the original line order in the output.
 // Returns a boolean indicating if any encryption/decryption was performed and any error encountered.
+//
+//nolint:gocognit,funlen // function complexity is acceptable for now
 func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) (bool, error) {
 	// Read all lines first to maintain output order
 	var lines []string
@@ -20,7 +24,8 @@ func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) 
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 
-		if strings.Contains(scanner.Text(), e.Directives.Encrypt) || strings.Contains(scanner.Text(), e.Directives.Decrypt) {
+		if strings.Contains(scanner.Text(), e.Directives.Encrypt) ||
+			strings.Contains(scanner.Text(), e.Directives.Decrypt) {
 			anyFound = true
 		}
 	}
@@ -62,10 +67,12 @@ func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) 
 			case strings.TrimSpace(line) == e.Directives.Encrypt && idx+1 < len(lines):
 				nextLine := lines[idx+1]
 				contentToEncrypt := line + "\n" + nextLine
+
 				encryptedLine, err := e.encryptData([]byte(contentToEncrypt))
 				if err != nil {
 					return false, err
 				}
+
 				result = fmt.Sprintf("%s: %s", e.Directives.Decrypt, string(encryptedLine))
 				wasProcessed = true
 				// Mark next line as processed
@@ -76,6 +83,7 @@ func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) 
 				if err != nil {
 					return false, err
 				}
+
 				result = fmt.Sprintf("%s: %s", e.Directives.Decrypt, string(encryptedLine))
 				wasProcessed = true
 
@@ -85,10 +93,12 @@ func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) 
 
 		case e.Operation == Decrypt && strings.HasPrefix(line, e.Directives.Decrypt+": "):
 			encryptedData := strings.TrimPrefix(line, e.Directives.Decrypt+": ")
+
 			decryptedLine, err := e.decryptData([]byte(encryptedData))
 			if err != nil {
 				return false, err
 			}
+
 			result = string(decryptedLine)
 			wasProcessed = true
 
@@ -107,3 +117,5 @@ func (e *Encryptor) processLinesExperiments(reader io.Reader, writer io.Writer) 
 
 	return anyProcessed, nil
 }
+
+// jscpd:ignore-end

@@ -16,8 +16,6 @@ import (
 // Run executes the main encryption/decryption logic based on the provided configuration.
 // It handles key loading, input data loading, and processes the data according to the
 // specified mode and operation.
-//
-//nolint:cyclop
 func Run(cfg *config.Config) error {
 	var (
 		encryptionKey []byte
@@ -41,16 +39,28 @@ func Run(cfg *config.Config) error {
 		return fmt.Errorf("reading key: %w", err)
 	}
 
-	// Ensure key meets AES-256 requirement
-	const keySize = 32
-	if len(encryptionKey) != keySize {
-		return fmt.Errorf("%w: invalid key length: got %d bytes, want %d", config.ErrUsage, len(encryptionKey), keySize)
+	const (
+		deterministicKeyLen = 64
+		normalKeyLen        = 32
+	)
+
+	// Ensure key meets requirements depending on mode
+	if cfg.Deterministic {
+		if len(encryptionKey) != deterministicKeyLen {
+			return fmt.Errorf("%w: deterministic mode requires 64-byte key (128 hex chars)", config.ErrUsage)
+		}
+	} else {
+		if len(encryptionKey) != normalKeyLen {
+			return fmt.Errorf("%w: normal mode requires 32-byte key (64 hex chars)", config.ErrUsage)
+		}
 	}
 
 	if cfg.Experiments {
 		cfg.Parallel = 1
 
-		printer.Stderrln("Experimental features enabled: parallel processing disabled")
+		if !cfg.Quiet {
+			printer.Stderrln("Experimental features enabled: parallel processing disabled")
+		}
 	}
 
 	// Load input data from stdin or file
@@ -62,11 +72,12 @@ func Run(cfg *config.Config) error {
 
 	// Initialize encryptor with configuration
 	encryptor := &encrypt.Encryptor{
-		Key:        encryptionKey,
-		Operation:  cfg.Operation,
-		Mode:       cfg.Mode,
-		Directives: cfg.Directives,
-		Parallel:   cfg.Parallel,
+		Key:           encryptionKey,
+		Operation:     cfg.Operation,
+		Mode:          cfg.Mode,
+		Directives:    cfg.Directives,
+		Parallel:      cfg.Parallel,
+		Deterministic: cfg.Deterministic,
 	}
 
 	// Process data and handle any errors
@@ -76,12 +87,14 @@ func Run(cfg *config.Config) error {
 	}
 
 	// Print operation summary based on mode
-	if cfg.Mode == "file" {
-		printer.Stderrln("%sed file: %q", cfg.Operation, cfg.File)
-	}
+	if !cfg.Quiet {
+		if cfg.Mode == "file" {
+			printer.Stderrln("%sed file: %q", cfg.Operation, cfg.File)
+		}
 
-	if cfg.Mode == "line" && processed {
-		printer.Stderrln("%sed lines in: %q", cfg.Operation, cfg.File)
+		if cfg.Mode == "line" && processed {
+			printer.Stderrln("%sed lines in: %q", cfg.Operation, cfg.File)
+		}
 	}
 
 	return nil

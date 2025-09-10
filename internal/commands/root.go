@@ -26,6 +26,8 @@ func NewRootCommand(cfg *config.Config, version string) *cobra.Command {
 	root.Flags().StringP("encrypt", "e", "### DIRECTIVE: ENCRYPT", "Directives for encryption")
 	root.Flags().StringP("decrypt", "d", "### DIRECTIVE: DECRYPT", "Directives for decryption")
 	root.Flags().BoolP("experiments", "x", false, "Enable experimental features")
+	root.Flags().Bool("deterministic", true, "Enable deterministic encryption (AES-SIV)")
+	root.Flags().BoolP("quiet", "q", false, "Suppress non-error messages")
 
 	root.AddCommand(NewEncryptCommand(cfg), NewDecryptCommand(cfg))
 

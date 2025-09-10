@@ -31,6 +31,9 @@ type Encryptor struct {
 
 	// Parallel specifies the number of goroutines to use for parallel processing
 	Parallel int
+
+	// Deterministic toggles deterministic encryption (AES-SIV)
+	Deterministic bool
 }
 
 // Process handles encryption and decryption based on the provided configuration.
@@ -44,10 +47,11 @@ func (e *Encryptor) Process(reader io.Reader, writer io.Writer) (bool, error) {
 		if e.Parallel > 1 {
 			return e.processLines(reader, writer, e.Parallel)
 		}
+
 		return e.processLinesExperiments(reader, writer)
 	case File:
 		return e.processWholeFile(reader, writer)
 	default:
-		return false, fmt.Errorf("invalid mode: %s", e.Mode) //nolint: err113
+		return false, fmt.Errorf("invalid mode: %s", e.Mode) //nolint: err113	// generic error
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-// encryptStream encrypts data from reader to writer using AES-CFB mode.
+// encryptStream encrypts data from reader to writer using AES-CTR mode.
 // It prepends the randomly generated IV to the encrypted output.
 // The encryption is done in chunks to maintain constant memory usage.
 func (e *Encryptor) encryptStream(reader io.Reader, writer io.Writer) error {
@@ -28,7 +28,7 @@ func (e *Encryptor) encryptStream(reader io.Reader, writer io.Writer) error {
 		return fmt.Errorf("writing IV: %w", err)
 	}
 
-	stream := cipher.NewCFBEncrypter(block, initializationVector)
+	stream := cipher.NewCTR(block, initializationVector)
 	// Use fixed-size buffers for reading and encryption
 	const bufferSize = 4096
 
@@ -40,8 +40,8 @@ func (e *Encryptor) encryptStream(reader io.Reader, writer io.Writer) error {
 		if n > 0 {
 			stream.XORKeyStream(encrypted[:n], buf[:n])
 
-			if _, err := writer.Write(encrypted[:n]); err != nil {
-				return fmt.Errorf("writing encrypted data: %w", err)
+			if _, errWrite := writer.Write(encrypted[:n]); errWrite != nil {
+				return fmt.Errorf("writing encrypted data: %w", errWrite)
 			}
 		}
 
@@ -57,7 +57,7 @@ func (e *Encryptor) encryptStream(reader io.Reader, writer io.Writer) error {
 	return nil
 }
 
-// decryptStream decrypts data from reader to writer using AES-CFB mode.
+// decryptStream decrypts data from reader to writer using AES-CTR mode.
 // It expects the IV to be prepended to the encrypted data.
 // The decryption is done in chunks to maintain constant memory usage.
 func (e *Encryptor) decryptStream(reader io.Reader, writer io.Writer) error {
@@ -78,7 +78,7 @@ func (e *Encryptor) decryptStream(reader io.Reader, writer io.Writer) error {
 		return fmt.Errorf("creating cipher: %w", err)
 	}
 
-	stream := cipher.NewCFBDecrypter(block, initializationVector)
+	stream := cipher.NewCTR(block, initializationVector)
 	// Use fixed-size buffers for reading and decryption
 	const bufferSize = 4096
 
@@ -90,8 +90,8 @@ func (e *Encryptor) decryptStream(reader io.Reader, writer io.Writer) error {
 		if n > 0 {
 			stream.XORKeyStream(decrypted[:n], buf[:n])
 
-			if _, err := writer.Write(decrypted[:n]); err != nil {
-				return fmt.Errorf("writing decrypted data: %w", err)
+			if _, errWrite := writer.Write(decrypted[:n]); errWrite != nil {
+				return fmt.Errorf("writing decrypted data: %w", errWrite)
 			}
 		}
 
@@ -105,4 +105,24 @@ func (e *Encryptor) decryptStream(reader io.Reader, writer io.Writer) error {
 	}
 
 	return nil
+}
+
+// encryptDeterministic encrypts the entire data buffer deterministically using AES-SIV.
+func (e *Encryptor) encryptDeterministic(data []byte) ([]byte, error) {
+	daead, err := newDAEAD(e.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	return daead.EncryptDeterministically(data, nil) //nolint:wrapcheck	// error does not need wrapping
+}
+
+// decryptDeterministic decrypts data previously encrypted with AES-SIV.
+func (e *Encryptor) decryptDeterministic(data []byte) ([]byte, error) {
+	daead, err := newDAEAD(e.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	return daead.DecryptDeterministically(data, nil) //nolint:wrapcheck	// error does not need wrapping
 }
