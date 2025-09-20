@@ -37,8 +37,6 @@ gocry decrypt test.sh.enc >test.sh.dec
 [[ -f "test.sh.dec" ]] || (echo '❌ test [File mode]: Decrypted file was not created' && exit 1)
 cmp -s test.sh.dec test.sh || (echo '❌ test [File mode]: File content changed' && exit 1)
 
-gocry --deterministic=true decrypt test.sh.enc >test.sh.dec
-
 echo "Starting test [Undeterministic, Line mode]..."
 # Line mode
 cat >test.sh <<'EOF'
