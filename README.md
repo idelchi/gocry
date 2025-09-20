@@ -8,7 +8,8 @@
 `gocry` is a command-line utility for encrypting and decrypting files using a specified key.
 
 Defaults to deterministic AES‑SIV encryption. Use a 128‑hex key (64 bytes).
-For non‑deterministic AES‑CTR set `--deterministic=false` and use a 64‑hex key (32 bytes).
+For randomized mode (`--deterministic=false`) gocry uses AES‑CTR for confidentiality and
+HMAC‑SHA256 (keys derived via HKDF) for integrity. Use a 64‑hex key (32 bytes).
 
 It supports both file encryption and line-by-line encryption based on directives within the file.
 
@@ -54,7 +55,7 @@ gocry [flags] command [flags]
 
 ### Commands
 
-#### `encrypt` - Encrypt content
+#### `encrypt` (alias: `enc`) - Encrypt content
 
 Encrypt a file or specific lines within a file.
 
@@ -68,7 +69,7 @@ gocry -f path/to/keyfile encrypt input.txt > encrypted.txt.enc
 gocry -f path/to/keyfile -m line encrypt input.txt > encrypted.txt
 ```
 
-#### `decrypt` - Decrypt content
+#### `decrypt` (alias: `dec`) - Decrypt content
 
 Decrypt a file or specific lines within a file.
 
@@ -121,6 +122,8 @@ This is a normal line.
 This line will be encrypted. ### DIRECTIVE: ENCRYPT
 Another normal line.
 ```
+
+Randomized ciphertexts contain a `GOCRY` header, a random IV, and an HMAC-SHA256 tag; in line mode the whole blob is Base64-encoded inside the directive.
 
 **After Encryption:**
 

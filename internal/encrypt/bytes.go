@@ -3,58 +3,92 @@ package encrypt
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"io"
 )
 
-// encryptBytes encrypts the given byte slice using AES-CTR mode.
-// It prepends a random IV to the ciphertext and returns the complete encrypted block.
-// The returned format is: [16 bytes IV][variable-length ciphertext].
+// encryptBytes encrypts the given byte slice using AES-CTR with an HMAC tag.
+// Output layout: [header | IV | ciphertext | tag].
 func (e *Encryptor) encryptBytes(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(e.Key)
+	encKey, macKey, err := deriveRandomizedKeys(e.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
-	// Allocate space for IV and ciphertext in a single slice
-	ciphertext := make([]byte, aes.BlockSize+len(data))
-	initializationVector := ciphertext[:aes.BlockSize]
+	header := randomizedHeader()
+	totalLen := len(header) + aes.BlockSize + len(data) + randomizedTagSize
+	out := make([]byte, totalLen)
 
-	// Generate random IV using crypto/rand
-	if _, err := io.ReadFull(rand.Reader, initializationVector); err != nil {
+	offset := 0
+	copy(out[offset:], header)
+	offset += len(header)
+
+	iv := out[offset : offset+aes.BlockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		return nil, fmt.Errorf("generating IV: %w", err)
 	}
+	offset += aes.BlockSize
 
-	// Encrypt data using CTR mode
-	stream := cipher.NewCTR(block, initializationVector)
-	stream.XORKeyStream(ciphertext[aes.BlockSize:], data)
+	ciphertext := out[offset : offset+len(data)]
+	stream := cipher.NewCTR(block, iv)
+	stream.XORKeyStream(ciphertext, data)
+	offset += len(data)
 
-	return ciphertext, nil
+	mac := hmac.New(sha256.New, macKey)
+	mac.Write(out[:offset])
+	tag := mac.Sum(nil)
+	copy(out[offset:], tag)
+
+	return out, nil
 }
 
-// decryptBytes decrypts the given ciphertext using AES-CTR mode.
-// It expects the input to be in the format: [16 bytes IV][variable-length ciphertext].
-// Returns the original plaintext on success.
+// decryptBytes decrypts data produced by encryptBytes.
 func (e *Encryptor) decryptBytes(ciphertext []byte) ([]byte, error) {
-	// Verify minimum length requirement for IV
-	if len(ciphertext) < aes.BlockSize {
+	if len(ciphertext) < len(randomizedHeaderPrefix)+1+aes.BlockSize+randomizedTagSize {
 		return nil, fmt.Errorf("%w: ciphertext too short", ErrProcessing)
 	}
 
-	block, err := aes.NewCipher(e.Key)
+	encKey, macKey, err := deriveRandomizedKeys(e.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	headerEnd := len(randomizedHeaderPrefix) + 1
+	header := ciphertext[:headerEnd]
+	if err := parseRandomizedHeader(header); err != nil {
+		return nil, err
+	}
+
+	mac := hmac.New(sha256.New, macKey)
+	mac.Write(ciphertext[:len(ciphertext)-randomizedTagSize])
+
+	tag := ciphertext[len(ciphertext)-randomizedTagSize:]
+	if !hmac.Equal(mac.Sum(nil), tag) {
+		return nil, fmt.Errorf("%w: authentication failed", ErrProcessing)
+	}
+
+	ivStart := headerEnd
+	ivEnd := ivStart + aes.BlockSize
+	iv := ciphertext[ivStart:ivEnd]
+
+	body := ciphertext[ivEnd : len(ciphertext)-randomizedTagSize]
+
+	block, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
-	// Extract IV and actual ciphertext
-	iv := ciphertext[:aes.BlockSize]
-
-	ciphertext = ciphertext[aes.BlockSize:]
-
-	// Decrypt data using CTR mode
+	plaintext := make([]byte, len(body))
 	stream := cipher.NewCTR(block, iv)
-	stream.XORKeyStream(ciphertext, ciphertext) // Decryption happens in-place
+	stream.XORKeyStream(plaintext, body)
 
-	return ciphertext, nil
+	return plaintext, nil
 }
