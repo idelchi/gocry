@@ -1,7 +1,6 @@
 version: "3"
 
 vars:
-  # Mandatory, otherwise the includes won't work.
   DEVENV: .devenv
 
 env:
@@ -98,3 +97,8 @@ tasks:
 
   update:
     - task: git:update
+
+  validate:
+    cmds:
+      - ./tests/gocry-deterministic.sh
+      - ./tests/gocry-undeterministic.sh
