@@ -39,6 +39,6 @@ jobs:
         run: |
           export PATH=~/.local/bin:$PATH
           echo "Added '~/.local/bin' to PATH"
-          curl -sSL https://raw.githubusercontent.com/idelchi/gogen/refs/heads/dev/install.sh | sh -s -- -d ~/.local/bin
+          curl -sSL https://raw.githubusercontent.com/idelchi/gogen/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
           ./tests/gocry-deterministic.sh
           ./tests/gocry-indeterministic.sh
