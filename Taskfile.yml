@@ -101,4 +101,4 @@ tasks:
   validate:
     cmds:
       - ./tests/gocry-deterministic.sh
-      - ./tests/gocry-undeterministic.sh
+      - ./tests/gocry-indeterministic.sh

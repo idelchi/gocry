@@ -12,6 +12,11 @@ import (
 // ErrProcessing indicates an error during processing.
 var ErrProcessing = errors.New("processing error")
 
+const (
+	deterministicKeyLen = 64
+	randomizedKeyLen    = 32
+)
+
 // processLines processes each line of the input data in parallel when possible.
 // It maintains the original line order in the output while leveraging parallel processing.
 // Returns a boolean indicating if any encryption/decryption was performed and any error encountered.
@@ -136,11 +141,21 @@ func (e *Encryptor) processLines(reader io.Reader, writer io.Writer, parallel in
 // processWholeFile processes the entire input as a single block of data.
 // It's used when line-by-line processing is not required.
 // Returns true if processing was performed and any error encountered.
+//
+//nolint:gocognit	// function complexity is acceptable
 func (e *Encryptor) processWholeFile(reader io.Reader, writer io.Writer) (bool, error) {
-	if e.Deterministic {
-		switch e.Operation {
-		case Encrypt:
-			buf, _ := io.ReadAll(reader)
+	switch e.Operation {
+	case Encrypt:
+		if e.Deterministic {
+			header := newEnvelopeHeader(modeDeterministic)
+			if _, err := writer.Write(header); err != nil {
+				return false, fmt.Errorf("writing header: %w", err)
+			}
+
+			buf, err := io.ReadAll(reader)
+			if err != nil {
+				return false, fmt.Errorf("reading input: %w", err)
+			}
 
 			out, err := e.encryptDeterministic(buf)
 			if err != nil {
@@ -149,9 +164,33 @@ func (e *Encryptor) processWholeFile(reader io.Reader, writer io.Writer) (bool, 
 
 			_, err = writer.Write(out)
 
-			return true, err //nolint:wrapcheck	// error does not need wrapping
-		case Decrypt:
-			buf, _ := io.ReadAll(reader)
+			return true, err //nolint:wrapcheck // error does not need wrapping
+		}
+
+		return true, e.encryptStream(reader, writer)
+	case Decrypt:
+		header := make([]byte, envelopeHeaderSize)
+		if _, err := io.ReadFull(reader, header); err != nil {
+			return false, fmt.Errorf("reading header: %w", err)
+		}
+
+		mode, err := parseEnvelopeHeader(header)
+		if err != nil {
+			return false, err
+		}
+
+		switch mode {
+		case modeDeterministic:
+			if len(e.Key) != deterministicKeyLen {
+				return false, fmt.Errorf("%w: deterministic data requires 64-byte key (128 hex chars)", ErrProcessing)
+			}
+
+			e.Deterministic = true
+
+			buf, err := io.ReadAll(reader)
+			if err != nil {
+				return false, fmt.Errorf("reading ciphertext: %w", err)
+			}
 
 			out, err := e.decryptDeterministic(buf)
 			if err != nil {
@@ -160,15 +199,18 @@ func (e *Encryptor) processWholeFile(reader io.Reader, writer io.Writer) (bool, 
 
 			_, err = writer.Write(out)
 
-			return true, err //nolint:wrapcheck	// error does not need wrapping
-		}
-	}
+			return true, err //nolint:wrapcheck // error does not need wrapping
+		case modeRandomized:
+			if len(e.Key) != randomizedKeyLen {
+				return false, fmt.Errorf("%w: randomized data requires 32-byte key (64 hex chars)", ErrProcessing)
+			}
 
-	switch e.Operation {
-	case Encrypt:
-		return true, e.encryptStream(reader, writer)
-	case Decrypt:
-		return true, e.decryptStream(reader, writer)
+			e.Deterministic = false
+
+			return true, e.decryptStream(reader, writer, header)
+		default:
+			return false, fmt.Errorf("%w: invalid header mode", ErrProcessing)
+		}
 	}
 
 	return false, fmt.Errorf("%w: invalid operation", ErrProcessing)

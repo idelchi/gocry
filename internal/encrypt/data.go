@@ -15,7 +15,9 @@ func (e *Encryptor) encryptData(data []byte) ([]byte, error) {
 			return nil, err
 		}
 
-		return []byte(base64.StdEncoding.EncodeToString(out)), nil
+		envelope := append(newEnvelopeHeader(modeDeterministic), out...)
+
+		return []byte(base64.StdEncoding.EncodeToString(envelope)), nil
 	}
 
 	ciphertext, err := e.encryptBytes(data)
@@ -35,9 +37,29 @@ func (e *Encryptor) decryptData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("decoding base64: %w", err)
 	}
 
-	if e.Deterministic {
-		return e.decryptDeterministic(ciphertext)
+	if len(ciphertext) < envelopeHeaderSize {
+		return nil, fmt.Errorf("%w: ciphertext too short", ErrProcessing)
 	}
 
-	return e.decryptBytes(ciphertext)
+	mode, err := parseEnvelopeHeader(ciphertext[:envelopeHeaderSize])
+	if err != nil {
+		return nil, err
+	}
+
+	switch mode {
+	case modeDeterministic:
+		if len(e.Key) != deterministicKeyLen {
+			return nil, fmt.Errorf("%w: deterministic data requires 64-byte key (128 hex chars)", ErrProcessing)
+		}
+
+		return e.decryptDeterministic(ciphertext[envelopeHeaderSize:])
+	case modeRandomized:
+		if len(e.Key) != randomizedKeyLen {
+			return nil, fmt.Errorf("%w: randomized data requires 32-byte key (64 hex chars)", ErrProcessing)
+		}
+
+		return e.decryptBytes(ciphertext)
+	default:
+		return nil, fmt.Errorf("%w: unsupported mode", ErrProcessing)
+	}
 }

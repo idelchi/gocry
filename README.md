@@ -7,9 +7,6 @@
 
 `gocry` is a command-line utility for encrypting and decrypting files using a specified key.
 
-Defaults to deterministic AES‑SIV encryption. Use a 128‑hex key (64 bytes).
-For non‑deterministic AES‑CTR set `--deterministic=false` and use a 64‑hex key (32 bytes).
-
 It supports both file encryption and line-by-line encryption based on directives within the file.
 
 The tool can read the file from stdin and write the encrypted/decrypted content to stdout,
@@ -37,26 +34,27 @@ gocry [flags] command [flags]
 
 ### Global Flags and Environment Variables
 
-| Flag              | Environment Variable      | Description                         | Default                  |
-| ----------------- | ------------------------- | ----------------------------------- | ------------------------ |
-| `-j, --parallel`  | `GOCRY_PARALLEL`          | Number of parallel workers          | `runtime.NumCPU()`       |
-| `-k, --key`       | `GOCRY_KEY`               | Key for encryption/decryption       | -                        |
-| `-f, --key-file`  | `GOCRY_KEY_FILE`          | Path to the key file                | -                        |
-| `-m, --mode`      | `GOCRY_MODE`              | Mode of operation: `file` or `line` | `file`                   |
-| `--encrypt`       | `GOCRY_ENCRYPT_DIRECTIVE` | Directive for encryption            | `### DIRECTIVE: ENCRYPT` |
-| `--decrypt`       | `GOCRY_DECRYPT_DIRECTIVE` | Directive for decryption            | `### DIRECTIVE: DECRYPT` |
-| `--deterministic` | `GOCRY_DETERMINISTIC`     | Enable deterministic AES‑SIV        | `true`                   |
-| `--quiet`         | `GOCRY_QUIET`             | Suppress non-error messages         | `false`                  |
-| `--experiments`   | `GOCRY_EXPERIMENTS`       | Enable experimental features        | `false`                  |
-| `-s, --show`      | `GOCRY_SHOW`              | Show the configuration and exit     | `false`                  |
-| `-h, --help`      | -                         | Help for `gocry`                    | -                        |
-| `-v, --version`   | -                         | Version for `gocry`                 | -                        |
+| Flag             | Environment Variable      | Description                         | Default                  |
+| ---------------- | ------------------------- | ----------------------------------- | ------------------------ |
+| `-j, --parallel` | `GOCRY_PARALLEL`          | Number of parallel workers          | `runtime.NumCPU()`       |
+| `-k, --key`      | `GOCRY_KEY`               | Key for encryption/decryption       | -                        |
+| `-f, --key-file` | `GOCRY_KEY_FILE`          | Path to the key file                | -                        |
+| `-m, --mode`     | `GOCRY_MODE`              | Mode of operation: `file` or `line` | `file`                   |
+| `--encrypt`      | `GOCRY_ENCRYPT_DIRECTIVE` | Directive for encryption            | `### DIRECTIVE: ENCRYPT` |
+| `--decrypt`      | `GOCRY_DECRYPT_DIRECTIVE` | Directive for decryption            | `### DIRECTIVE: DECRYPT` |
+| `--quiet`        | `GOCRY_QUIET`             | Suppress non-error messages         | `false`                  |
+| `--experiments`  | `GOCRY_EXPERIMENTS`       | Enable experimental features        | `false`                  |
+| `-s, --show`     | `GOCRY_SHOW`              | Show the configuration and exit     | `false`                  |
+| `-h, --help`     | -                         | Help for `gocry`                    | -                        |
+| `-v, --version`  | -                         | Version for `gocry`                 | -                        |
 
 ### Commands
 
-#### `encrypt` - Encrypt content
+#### `encrypt` (alias: `enc`) - Encrypt content
 
 Encrypt a file or specific lines within a file.
+
+Deterministic AES-SIV as default; pass `--deterministic=false` to emit randomized AES-CTR + HMAC output instead.
 
 Examples:
 
@@ -68,9 +66,17 @@ gocry -f path/to/keyfile encrypt input.txt > encrypted.txt.enc
 gocry -f path/to/keyfile -m line encrypt input.txt > encrypted.txt
 ```
 
-#### `decrypt` - Decrypt content
+#### Configuration
+
+| Flag                  | Environment Variable  | Description                  | Default | Valid Values    |
+| --------------------- | --------------------- | ---------------------------- | ------- | --------------- |
+| `-d, --deterministic` | `GOCRY_DETERMINISTIC` | Use deterministic encryption | `true`  | `true`, `false` |
+
+#### `decrypt` (alias: `dec`) - Decrypt content
 
 Decrypt a file or specific lines within a file.
+
+Ciphertexts embed a small header, so `gocry decrypt` automatically chooses the correct mode.
 
 Examples:
 
@@ -122,7 +128,7 @@ This line will be encrypted. ### DIRECTIVE: ENCRYPT
 Another normal line.
 ```
 
-**After Encryption:**
+§**After Encryption:**
 
 ```text
 This is a normal line.
@@ -144,7 +150,3 @@ For detailed help on any command:
 gocry --help
 gocry <command> --help
 ```
-
-## TODO
-
-Allow for ENCRYPT/DECRYPT on the next line

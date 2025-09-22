@@ -1,4 +1,6 @@
 // Package logic implements the core business logic for the encryption/decryption.
+//
+//nolint:cyclop // package complexity is acceptable
 package logic
 
 import (
@@ -16,6 +18,8 @@ import (
 // Run executes the main encryption/decryption logic based on the provided configuration.
 // It handles key loading, input data loading, and processes the data according to the
 // specified mode and operation.
+//
+//nolint:gocognit // function complexity is acceptable
 func Run(cfg *config.Config) error {
 	var (
 		encryptionKey []byte
@@ -44,14 +48,21 @@ func Run(cfg *config.Config) error {
 		normalKeyLen        = 32
 	)
 
-	// Ensure key meets requirements depending on mode
-	if cfg.Deterministic {
-		if len(encryptionKey) != deterministicKeyLen {
-			return fmt.Errorf("%w: deterministic mode requires 64-byte key (128 hex chars)", config.ErrUsage)
+	// Ensure key meets requirements depending on operation and mode
+	switch cfg.Operation {
+	case encrypt.Encrypt:
+		if cfg.Deterministic {
+			if len(encryptionKey) != deterministicKeyLen {
+				return fmt.Errorf("%w: deterministic mode requires 64-byte key (128 hex chars)", config.ErrUsage)
+			}
+		} else {
+			if len(encryptionKey) != normalKeyLen {
+				return fmt.Errorf("%w: randomized mode requires 32-byte key (64 hex chars)", config.ErrUsage)
+			}
 		}
-	} else {
-		if len(encryptionKey) != normalKeyLen {
-			return fmt.Errorf("%w: normal mode requires 32-byte key (64 hex chars)", config.ErrUsage)
+	case encrypt.Decrypt:
+		if len(encryptionKey) != deterministicKeyLen && len(encryptionKey) != normalKeyLen {
+			return fmt.Errorf("%w: decrypt requires 32- or 64-byte key (64 or 128 hex chars)", config.ErrUsage)
 		}
 	}
 

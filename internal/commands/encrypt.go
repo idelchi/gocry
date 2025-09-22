@@ -26,5 +26,7 @@ func NewEncryptCommand(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(&cfg.Deterministic, "deterministic", true, "Enable deterministic encryption (AES-SIV)")
+
 	return cmd
 }
