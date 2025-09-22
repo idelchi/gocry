@@ -14,14 +14,6 @@ making it suitable for use as a filter in git.
 
 ## Installation
 
-### From source
-
-```sh
-go install github.com/idelchi/gocry@latest
-```
-
-### From installation script
-
 ```sh
 curl -sSL https://raw.githubusercontent.com/idelchi/gocry/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
 ```
